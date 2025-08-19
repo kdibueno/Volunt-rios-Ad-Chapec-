@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* ---------- Variáveis ---------- */
+:root {
+  --app-gradient: linear-gradient(
+    to bottom,
+    #000000 0%,
+    #0b1b17 35%,
+    #052e2b 65%,
+    #064e3b 100%
+  );
+  --foreground: #ededed;
+}
+
+/* ---------- Dark mode opcional ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground: #ededed;
+  }
+}
+
+/* ---------- Base global ---------- */
+html, body, #__next {
+  min-height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--foreground);
+
+  /* 🔥 gradiente global fixo */
+  background-image: var(--app-gradient);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
