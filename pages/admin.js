@@ -8,11 +8,19 @@ import useRoles from "../hooks/useRoles";
 import AuthButton from "../components/AuthButton";
 import Image from "next/image";
 import BackToPortalButton from "../components/BackToPortalButton";
-import {ChevronRight,Check,X,Trash2,UserMinus,FilterIcon,} from "lucide-react";
+import { ChevronRight, Check, X, Trash2, UserMinus, FilterIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 
-export default function Admin() {
+function Admin() {
   const [user, setUser] = useState(null);
-  useEffect(() => onAuthStateChanged(auth, (u) => setUser(u || null)), []);
+
+  // Auth: só no client
+  useEffect(() => {
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u || null));
+    return () => unsub();
+  }, [auth]);
+
   const { roles } = useRoles(user);
 
   const [users, setUsers] = useState({});
@@ -20,10 +28,13 @@ export default function Admin() {
   const [collapsed, setCollapsed] = useState({}); // padrão: oculto
   const [onlyPending, setOnlyPending] = useState(false);
 
+  // DB: só no client
   useEffect(() => {
-    const unsub = onValue(ref(db, "users"), (snap) => setUsers(snap.val() || {}));
+    if (!db) return;
+    const r = ref(db, "users");
+    const unsub = onValue(r, (snap) => setUsers(snap.val() || {}));
     return () => unsub();
-  }, []);
+  }, [db]);
 
   const canAdmin = !!roles.admin;
 
@@ -67,13 +78,13 @@ export default function Admin() {
   }
 
   async function toggleRole(uid, roleKey) {
-    if (!canAdmin) return;
+    if (!canAdmin || !db) return;
     const current = users?.[uid]?.roles?.[roleKey] || false;
     await update(ref(db, `users/${uid}/roles`), { [roleKey]: !current });
   }
 
   async function approveUser(uid) {
-    if (!canAdmin) return;
+    if (!canAdmin || !db) return;
     const payload = {
       approved: true,
       approvedAt: Date.now(),
@@ -85,18 +96,18 @@ export default function Admin() {
   }
 
   async function rejectUser(uid) {
-    if (!canAdmin) return;
+    if (!canAdmin || !db) return;
     if (!confirm("Rejeitar esta solicitação? O usuário continuará sem acesso.")) return;
     await update(ref(db, `users/${uid}`), {
       approved: false,
       rejectedAt: Date.now(),
-      roles: {}, // opcional: limpar roles
+      roles: {},
     });
   }
 
   // --- NOVOS: Remover acesso e Excluir usuário ---
   async function removeAccess(uid) {
-    if (!canAdmin) return;
+    if (!canAdmin || !db) return;
     if (!confirm("Remover acesso deste usuário? Ele ficará como não aprovado e sem permissões.")) return;
     await update(ref(db, `users/${uid}`), {
       approved: false,
@@ -107,7 +118,7 @@ export default function Admin() {
   }
 
   async function deleteUser(uid) {
-    if (!canAdmin) return;
+    if (!canAdmin || !db) return;
     const u = users?.[uid];
     const label = u?.displayName || u?.email || uid;
     const msg =
@@ -256,46 +267,46 @@ export default function Admin() {
                         >
                           <div className="px-4 pb-4 pt-1 space-y-5">
                             {/* Ações rápidas */}
-                              <div className="flex gap-2 mt-2">
-                                    {/* Aprovar */}
-                                    <button
-                                      onClick={() => approveUser(u.id)}
-                                      className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition"
-                                      title="Aprovar usuário"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      Aprovar
-                                    </button>
+                            <div className="flex gap-2 mt-2">
+                              {/* Aprovar */}
+                              <button
+                                onClick={() => approveUser(u.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                title="Aprovar usuário"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                Aprovar
+                              </button>
 
-                                    {/* Rejeitar */}
-                                    <button
-                                      onClick={() => rejectUser(u.id)}
-                                      className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
-                                      title="Rejeitar usuário"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                      Rejeitar
-                                    </button>
+                              {/* Rejeitar */}
+                              <button
+                                onClick={() => rejectUser(u.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+                                title="Rejeitar usuário"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                Rejeitar
+                              </button>
 
-                                    {/* Remover acesso */}
-                                    <button
-                                      onClick={() => removeAccess(u.id)}
-                                      className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white transition"
-                                      title="Remover acessos"
-                                    >
-                                      <UserMinus className="w-3.5 h-3.5" />
-                                      Acesso
-                                    </button>
+                              {/* Remover acesso */}
+                              <button
+                                onClick={() => removeAccess(u.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white transition"
+                                title="Remover acessos"
+                              >
+                                <UserMinus className="w-3.5 h-3.5" />
+                                Acesso
+                              </button>
 
-                                    {/* Excluir usuário */}
-                                    <button
-                                      onClick={() => deleteUser(u.id)}
-                                      className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-gray-600 hover:bg-gray-700 text-white transition"
-                                      title="Excluir usuário"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      Excluir
-                                    </button>
+                              {/* Excluir usuário */}
+                              <button
+                                onClick={() => deleteUser(u.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-gray-600 hover:bg-gray-700 text-white transition"
+                                title="Excluir usuário"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Excluir
+                              </button>
                             </div>
 
                             {/* Permissões */}
@@ -334,3 +345,6 @@ export default function Admin() {
     </AuthGate>
   );
 }
+
+// Exporta a página como client-only (sem SSR)
+export default dynamic(() => Promise.resolve(Admin), { ssr: false });
